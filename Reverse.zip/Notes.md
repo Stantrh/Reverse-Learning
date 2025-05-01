@@ -204,3 +204,6 @@ Et ça, ça s'explique par la **taille des registres** ! On en compte dans l'ord
 
 > Les **registres** sont des petites zones mémoire **dans le processeur**. Cela lui permet de faire certaines opérations (calculs, déplacement de valeurs, stockage …) sans avoir à passer par la **RAM** qui se situe plus loin, ce qui implique des **performances moins élevées** dans le cas où la mémoire serait utilisée.
 
+#### CISC vs RISC
+Pour ça, la partie de [reverse.zip](https://reverse.zip/posts/introduction_au_reverse_partie_4/#cisc-vs-risc) explique parfaitement ce qu'il y à savoir.
+

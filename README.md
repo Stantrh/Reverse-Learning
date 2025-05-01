@@ -61,3 +61,32 @@ $env:PROCESSOR_ARCHITECTURE
 ```
 
 ---
+
+
+### Installer IDA
+On télécharge le `.run` depuis [ici](https://my.hex-rays.com/dashboard/download-center/9.1/ida-free).  
+
+Puis, on lui ajoute les permissions d'être exécuté :  
+
+```sh
+┌──(naxyl㉿kali)-[~/Downloads]
+└─$ chmod +x ida-free-pc_91_x64linux.run
+```
+
+On le run :
+
+```sh
+┌──(naxyl㉿kali)-[~/Downloads]
+└─$ ./ida-free-pc_91_x64linux.run 
+```
+
+On finit l'installation, et ça nous dit qu'on a besoin d'une **license**. On la récupère [ici](https://my.hex-rays.com/dashboard/licenses).
+
+Une fois qu'on a le fichier ``.hexclic``, on le met dans le dossier de l'installation :  
+
+```sh
+┌──(naxyl㉿kali)-[~/Downloads]
+└─$ mv idafree_96-51DE-DD49-FF.hexlic ~/ida-free-pc-9.1
+```
+
+Et c'est installé, on peut le lancer via le menu démarrer ! 
