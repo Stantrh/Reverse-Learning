@@ -178,5 +178,5 @@ Evidemment, on a vu que c'est un **segment** d'un programme, mais à quoi elle s
 > Fidèle à son nom, elle utilise la structure de données qu'est **la pile**. Donc du **LIFO**(*Last In First Out*).
 
 Ici, on utilisera l'exemple d'une **pile** pour du **x86**, donc **32 bits**. La seule différence avec du **64 bits**, c'est la **taille maximum** de chaque **élément** que la pile peut stocker.
-On oublie pas que les **pointeurs** `esb` et `ebp` sont utilisés pour pointer vers le **haut** et le **bas** de la pile.
+On oublie pas que les **pointeurs** `esp` et `ebp` sont utilisés pour pointer vers le **haut** et le **bas** de la pile.
 
