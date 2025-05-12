@@ -1,6 +1,34 @@
+
+1. [[#Désassembleur|Désassembleur]]
+2. [[#IDA|IDA]]
+3. [[#Registres|Registres]]
+	1. [[#Registres#Registres principaux|Registres principaux]]
+	2. [[#Registres#Les autres registres|Les autres registres]]
+		1. [[#Les autres registres#EFLAGS (ou RFLAGS en 64 bits)|EFLAGS (ou RFLAGS en 64 bits)]]
+4. [[#La pile|La pile]]
+5. [[#La pile#La pile|La pile]]
+	1. [[#La pile#Empiler|Empiler]]
+	2. [[#La pile#Dépiler|Dépiler]]
+6. [[#La pile#Stack Frame|Stack Frame]]
+	1. [[#Stack Frame#L'appel de fonction|L'appel de fonction]]
+		1. [[#L'appel de fonction#Arguments|Arguments]]
+		2. [[#L'appel de fonction#Adresse de retour|Adresse de retour]]
+7. [[#La pile#Prologue|Prologue]]
+8. [[#La pile#Fonction|Fonction]]
+9. [[#La pile#Epilogue|Epilogue]]
+	1. [[#Epilogue#leave|leave]]
+	2. [[#Epilogue#ret|ret]]
+10. [[#La pile#Fonction `main`|Fonction `main`]]
+	1. [[#Fonction `main`#Offsets|Offsets]]
+11. [[#La pile#Code désassemblé|Code désassemblé]]
+12. [[#La pile#Instructions en assembleur|Instructions en assembleur]]
+
+
+
 > L'**analyse statique** signifie qu'on ne va ni **exécuter** ni **déboguer** le programme.
 
 Ici, on va travailler avec du **x86**, donc **32 bits**. Même si on a un processeur **64 bits**, il est rétrocompatible et peut donc exécuter des instructions sur **32 bits** (puisqu'il a des registres de **64 bits**, qui se déclinent en **sous registres** qui peuvent faire **32 bits**, et ainsi de suite..).
+
 
 On utilisera ce petit programme en C, tout simple !  
 
@@ -171,6 +199,7 @@ Dans `RFLAGS` (**64 bits**) on à ces **flags** à ces **positions**. Si besoin 
 ![[Pasted image 20250501224330.png]]
 
 ---
+
 
 ### La pile
 Evidemment, on a vu que c'est un **segment** d'un programme, mais à quoi elle sert ? Comment est-elle utilisée ? 
@@ -410,6 +439,140 @@ Ce qui veut dire qu'on met l'**adresse de retour** (là où `esp` et `ebp` point
 
 Et on peut aussi noter une chose, puisqu'on a dit que c'est `main` qui s'occupe de dépiler les arguments auxquels devait accéder `discriminant`, ça voudrait dire que discriminant n'a pas pu accéder à ces arguments ? 
 
-Et bien si, en accédant par exemple à `EBP - 4`, ce qui correspond à l'élément juste en dessous de l'élément de la base de la pile (de la stack frame précisément). Etc.
+Et bien si, en accédant par exemple à `EBP + 4`, ce qui correspond à l'élément juste en dessous de l'élément de la base de la pile (de la stack frame précisément). Etc.
+
+
+### Fonction `main`
+
+Maintenant qu'on a compris la [**pile**](#la-pile), le [**prologue**](#prologue) ainsi que l['**épilogue**](#epilogue), on va pouvoir voir ce qui se passe dans la fonction `main`.
+
+Pour rappel, on parle de cette fonction `main` (de notre petit exécutable) :  
+
+```c
+int main()
+{
+	int a = 2;
+	int b = 3;
+
+	return a + b;
+}
+```
+
+Et avec IDA, on a ça :  
+
+![[Pasted image 20250512154800.png]]
+
+#### Offsets
+Déjà, à quoi correspondent ces instructions ?
+
+```asm
+var_8= dword ptr -8
+var_4= dword ptr -4
+argc= dword ptr  8
+argv= dword ptr  0Ch
+envp= dword ptr  10h
+```
+
+> En _reverse_ on utilise énormément la notion d’**offset** par rapport à l’utilisation d’une **adresse “fixe”**.
+> 
+> Par exemple, on préfère dire que la première variable est située à l’adresse `ebp-8` (`-8` étant l’**offset**) que de dire qu’elle est située à l’adresse `0x7fffff10`.
+> 
+> Pourquoi ? Tout simplement car de nos jours, les adresses utilisées dans un programme sont **aléatoires** ce qui signifie que d’une exécution à une autre, l’adresse de la variable locale peut changer tandis que `ebp-8` pointera toujours vers la variable en question.
+
+On peut voir qu'il y a des **offsets** **positifs** et des **offsets négatifs**, et c'est pour une bonne raison.
+
+On se rappelle que pour la **stack frame** d'une fonction, les **arguments** qui lui sont passés sont situés **avant** le début de la **stack frame**. Et ses **variables locales** elles sont dans la **stack frame** de la fonction.
+
+Ce qui veut dire que les **offsets positifs**, c'est par exemple des :  
+- `ebp+8`
+- `ebp+0xc`
+- `ebp+0x10`
+
+Et ça correspond aux **arguments** de la fonction. Tandis que les **offsets négatifs** eux, correspondent aux variables dans la **stack frame**, car elles se situent après `ebp` (la base de la **stack frame**). 
+
+
+![[Pasted image 20250512160059.png]]
+
+> Petite précision : Les variables ont des **offsets négatifs** quand on se base par rapport à `ebp`. Si jamais on se base sur `esp`, les variables auront des **offsets positifs**. (et les arguments des **offsets positifs encore + grands**)
+
+
+Donc pour en revenir à la déclaration de ces deux variables `var_4` et `var_8`, on sait qu'elles correspondent respectivement à `local_var_1` et ``local_var_2``.
+
+```asm
+var_8= dword ptr -8
+var_4= dword ptr -4
+```
+
+Et maintenant, concernant les trois autres variables déclarées par IDA ? 
+
+```asm
+argc= dword ptr  8
+argv= dword ptr  0Ch
+envp= dword ptr  10h
+```
+
+On voit qu'on a là des **offsets positifs**, donc situés **avant** la **stack frame** de `main`.  
+
+> On avait bien deux variables locales dans notre programme. Mais pourquoi IDA liste 3 arguments que sont `argc`, `argv` et `envp` alors que notre fonction `main` ne prend aucun argument ?
+
+En fait `argc`, `argv` et `envp` sont les 3 arguments que l’on peut donner, ou non, à une fonction `main` avec :
+- `argc` : le nombre d’arguments donnés lors du lancement du programme. Par exemple, si le programme est lancé ainsi : `./exe arg1 arg2` alors `argc` vaudra 3 et non pas 2. En effet, le premier argument d’un programme en C est le **nom du programme** tel qu’il a été lancé.
+- `argv`: un tableau de chaînes de caractères où chaque élément représente un argument. Le **premier élément**, à l’index 0, est donc le **nom du programme**.
+- `envp` : un tableau de caractères où chaque élément est une paire `clé=valeur` qui correspond aux variables d’environnement. Par exemple : `HOME=/home/username`
+
+>Il faut également savoir une chose, bien que dans le code source aucun argument n’est donné à notre fonction `int main()`eh bien `argc`, `argv` et `envp` seront tout de même présents en mémoire car ils y sont **toujours insérés** au lancement du programme. C’est peut-être la raison pour laquelle IDA crée toujours automatiquement 3 variables à leur nom.
+
+
+### Code désassemblé
+
+On peut enfin passer au **code désassemblé** ! 
+
+```asm
+push    ebp
+mov     ebp, esp
+sub     esp, 10h
+mov     [ebp+var_8], 2
+mov     [ebp+var_4], 3
+mov     edx, [ebp+var_8]
+mov     eax, [ebp+var_4]
+add     eax, edx
+leave
+retn
+```
+
+
+On retrouve d'abord notre **prologue**, qu'on a plus besoin de détailler, il s'occupe de placer en haut de la pile la valeur d'`ebp` avant d'entrer dans la **stack frame** de `main`, de changer `ebp` pour qu'il pointe vers le haut de la pile (donc la base de la **stack frame**), puis de réserver de l'espace mémoire pour les **variables locales** de la fonction, en bougeant `esp` vers des adresses plus basses.
+
+Ensuite, on a ces instructions :   
+
+```asm
+mov     [ebp+var_8], 2
+mov     [ebp+var_4], 3
+mov     edx, [ebp+var_8]
+mov     eax, [ebp+var_4]
+add     eax, edx
+```
+
+Les deux premières, on peut voir qu'elles correspondent à ces deux lignes de notre `main` :  
+
+```asm
+mov     [ebp+var_8], 2
+mov     [ebp+var_4], 3
+```
+
+```c
+int a = 2;
+int b = 3;
+```
+
+Cela met la valeur **2** dans `local_var_2` (qui correspond donc à `a`), et idem pour `b` avec la valeur **3** dans `local_var_1`. 
+
+### Instructions en assembleur
+On va devoir faire un petit point sur les **instructions** en assembleur.
+
+#### L'instruction `mov`
+Cela permet de **déplacer** une valeur d'un endroit à un autre. Mais c'est une **copie**, ça veut dire que l'endroit source de la valeur la contiendra toujours après l'avoir mise dans l'endroit de destination.
+
+Il y a plusieurs cas d'usage pour `mov`, c'est pour ça qu'on va les voir.
 
 

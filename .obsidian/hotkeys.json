@@ -30,5 +30,13 @@
       ],
       "key": "Numpad2"
     }
+  ],
+  "table-editor-obsidian:insert-row": [
+    {
+      "modifiers": [
+        "Mod"
+      ],
+      "key": "."
+    }
   ]
 }
