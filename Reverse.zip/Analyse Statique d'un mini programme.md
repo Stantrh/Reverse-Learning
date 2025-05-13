@@ -6,22 +6,36 @@
 	2. [[#Registres#Les autres registres|Les autres registres]]
 		1. [[#Les autres registres#EFLAGS (ou RFLAGS en 64 bits)|EFLAGS (ou RFLAGS en 64 bits)]]
 4. [[#La pile|La pile]]
-5. [[#La pile#La pile|La pile]]
 	1. [[#La pile#Empiler|Empiler]]
 	2. [[#La pile#Dépiler|Dépiler]]
-6. [[#La pile#Stack Frame|Stack Frame]]
+5. [[#Stack Frame|Stack Frame]]
 	1. [[#Stack Frame#L'appel de fonction|L'appel de fonction]]
 		1. [[#L'appel de fonction#Arguments|Arguments]]
 		2. [[#L'appel de fonction#Adresse de retour|Adresse de retour]]
-7. [[#La pile#Prologue|Prologue]]
-8. [[#La pile#Fonction|Fonction]]
-9. [[#La pile#Epilogue|Epilogue]]
+6. [[#Prologue|Prologue]]
+7. [[#Fonction|Fonction]]
+8. [[#Epilogue|Epilogue]]
 	1. [[#Epilogue#leave|leave]]
 	2. [[#Epilogue#ret|ret]]
-10. [[#La pile#Fonction `main`|Fonction `main`]]
+9. [[#Fonction `main`|Fonction `main`]]
 	1. [[#Fonction `main`#Offsets|Offsets]]
-11. [[#La pile#Code désassemblé|Code désassemblé]]
-12. [[#La pile#Instructions en assembleur|Instructions en assembleur]]
+10. [[#Code désassemblé|Code désassemblé]]
+11. [[#Instructions en assembleur|Instructions en assembleur]]
+	1. [[#Instructions en assembleur#L'instruction `mov`|L'instruction `mov`]]
+		1. [[#L'instruction `mov`#Exemple 1|Exemple 1]]
+		2. [[#L'instruction `mov`#Exemple 2|Exemple 2]]
+		3. [[#L'instruction `mov`#Exemple 3|Exemple 3]]
+		4. [[#L'instruction `mov`#Exemple 4|Exemple 4]]
+		5. [[#L'instruction `mov`#Résumé des exemples|Résumé des exemples]]
+	2. [[#Instructions en assembleur#L'instruction `lea`|L'instruction `lea`]]
+		1. [[#L'instruction `lea`#Exemple concret : `mov` vs `lea`|Exemple concret : `mov` vs `lea`]]
+		2. [[#L'instruction `lea`#Exemple concret : `lea` plutôt que `mov`|Exemple concret : `lea` plutôt que `mov`]]
+	3. [[#Instructions en assembleur#L'instruction `add`|L'instruction `add`]]
+		1. [[#L'instruction `add`#Premier exemple|Premier exemple]]
+		2. [[#L'instruction `add`#Autres exemples|Autres exemples]]
+12. [[#Finalisation du reverse|Finalisation du reverse]]
+13. [[#Conclusion|Conclusion]]
+
 
 
 
@@ -574,5 +588,294 @@ On va devoir faire un petit point sur les **instructions** en assembleur.
 Cela permet de **déplacer** une valeur d'un endroit à un autre. Mais c'est une **copie**, ça veut dire que l'endroit source de la valeur la contiendra toujours après l'avoir mise dans l'endroit de destination.
 
 Il y a plusieurs cas d'usage pour `mov`, c'est pour ça qu'on va les voir.
+
+##### Exemple 1
+On utilise `mov` de cette façon :  
+
+```asm
+mov reg_d, value
+```
+
+**Opérandes** 
+- `reg_d` : Le registre de destination.
+- `value` : La valeur immédiate (ou concrète, ou constante).
+
+Et un exemple concret. Imaginons que `eax` contienne `0xaabbccdd`.
+
+On fait 
+
+```asm
+mov eax, 0xdeadbeef
+```
+
+`eax` contient désormais `0xdeadbeef`.
+
+##### Exemple 2
+On utilise `mov` de cette façon :  
+
+```asm
+mov reg_d, reg_s
+```
+
+**Opérandes** 
+- `reg_d` : Le registre de destination.
+- `reg_s` : Le registre source qui contient la valeur.
+
+Imaginons que `eax` contienne `0xdeadbeef`. 
+
+On fait
+
+```
+mov edx, eax
+```
+
+Alors maintenant `edx` contient aussi `0xdeadbeef`. Et `eax` **contient toujours** `0xdeadbeef`.
+
+##### Exemple 3
+On utilise `mov` de cette façon :  
+
+```asm
+mov reg_d, reg_p
+```
+
+**Opérandes** 
+- `reg_d` : Le registre de destination.
+- `reg_p` : Le registre **pointant** vers une **zone mémoire**.
+
+C'est donc la valeur pointée par `reg_p` qui est copiée dans `reg_d`.
+
+Imaginons que `eax` pointe vers la zone mémoire `0x700000F0`. Et cette zone mémoire, elle contient `0x1a2b3c4d`.
+
+On suppose aussi que `ebx` contienne la valeur `0xcafebabe`.
+
+On fait
+
+```
+mov ebx, [eax]
+```
+
+Et maintenant, `ebx` contient `0x1a2b3c4d`.
+
+
+##### Exemple 4
+On utilise `mov` de cette façon (l'inverse de l'exemple précédent) :  
+
+```asm
+mov [reg_p], reg_s
+```
+
+**Opérandes** 
+- `reg_p` : Le registre **pointant** vers une **zone mémoire**.
+- `reg_s` : Le registre source.
+
+Ici, on va copier la valeur contenue dans `reg_s` dans la **zone mémoire pointée** par `reg_p`.
+
+Si on a `eax` qui pointe vers `0x700000F0`, et cette zone mémoire qui elle pointe vers la valeur `0x1a2b3c4d`. 
+
+Et `ebx` qui contient `0xcafebabe`.
+
+```
+mov [eax], ebx
+```
+
+Maintenant, la zone mémoire que pointe `eax` (donc `0x700000F0`) pointe vers la valeur `0xcafebabe`.
+
+
+##### Résumé des exemples
+En partant de cette configuration initiale.
+
+![[Pasted image 20250512222236.png]]
+
+Voici ce que donnent les 4 exemples :  
+
+![[Pasted image 20250512222259.png]]
+
+
+#### L'instruction `lea`
+Cette instruction a ainsi une seule forme où la première opérande est toujours un registre, la seconde opérande est une valeur qui est souvent une adresse vers une zone mémoire.
+
+Ce que fait `lea` est tout simplement la copie de l’opérande de droite, **sans la déréférencer**, vers le registre de destination.
+
+```ad-note
+title: Définition : Déréférencer
+**Déréférencer**, c’est **aller lire ou écrire la valeur stockée à une adresse mémoire**.
+```
+
+Un exemple de **déréférencement** : 
+
+```asm
+mov eax, [0x400000]
+```
+
+Car cela va **lire** la valeur à l'adresse `0x400000` et la copier dans `eax.
+
+##### Exemple concret : `mov` vs `lea`
+Imaginons que l'adresse `0x700000F0` contienne ``0xdeadbeef``.
+
+Ceci correspond à **déréférencer** :  
+
+```asm
+mov eax, [0x700000F0]  ; eax reçoit 0xdeadbeef (valeur stockée en mémoire)
+```
+
+Et ici, sans **déréférencement** :  
+
+```asm
+lea eax, [0x700000F0]  ; eax reçoit 0x700000F0 (l'adresse elle-même)
+```
+
+> Donc on remarque que `lea` copie la valeur entre les crochets vers le registre de destination. En d’autres termes, `lea reg, [...]` est équivalente à `mov reg, ...`.
+
+Quel est l'intérêt d'utiliser `lea` plutôt que `mov` si ça revient au même ?
+
+##### Exemple concret : `lea` plutôt que `mov`
+Si on souhaite affecter à `ecx` la somme de `ebx` et `eax` en utilisant `mov`, on fait comme ça :  
+
+```asm
+mov ecx, ebx
+add ecx, eax      ; ecx = ebx + eax
+```
+
+Tandis qu'avec `lea` :  
+
+```asm
+lea ecx, [ebx + eax]
+```
+
+Donc déjà on économise une ligne, et `lea` permet de faire principalement deux choses :  
+- **Stocker** le résultat de **simples opérations** en écrivant **une seule** instruction.
+- De **manipuler des adresses** en y ajoutant, ou non, un **offset**.
+
+#### L'instruction `add`
+On va la voir dans la fonction `main`, il est donc essentiel de comprendre ses cas d'usages principaux.
+
+##### Premier exemple
+On utilise `add` de cette façon :  
+
+```asm
+add reg_d, reg_s
+```
+
+**Opérandes** 
+- `reg_d` : Le registre de **destination** qui stockera le **résultat**.
+- `reg_s` : Le registre **source**.
+
+L'instruction réalise **deux actions** à la fois :  
+- **Addition** de la valeur dans le registre de **destination** avec la valeur dans le registre **source**.
+- **Stockage** du résultat (la somme) dans le registre de **destination**.
+
+Donc si on a :  
+
+```asm
+mov eax, 0xf0000034
+mov ebx, 0x20001200
+```
+
+On fait ensuite l'**addition** avec : 
+
+```asm
+add eax, ebx
+```
+
+```ad-danger
+title: Addition : Débordement
+L'addition de `0xf0000034` et `0x20001200` devrait donner `0x110001234`. Sauf qu'en réalité, ce n'est pas la valeur que contiendra `eax`.  
+`eax` contiendra `0x10001234` car la somme dépasse le plus grand entier que peut stocker `eax` (soit 32 bits). Donc le résultat est tronqué aux **32 bits de poids faible**
+```
+
+##### Autres exemples
+Il existe également d'autres façons d'utiliser `add` :  
+
+```asm
+add reg, value
+```
+
+```asm
+add [ptr], value
+```
+
+```asm
+add reg, [ptr]
+```
+
+```ad-caution
+title: Addition: Valeurs
+Toutes les instructions, sauf mention contraire (comme `lea`), déréférencent les pointeurs vers des zones mémoire.
+
+Dans les précédentes formes, ce n’est donc pas le pointeur `ptr` qui est utilisé dans la somme mais la valeur pointée par `ptr` qui est `[ptr]` (qui serait `*ptr` en C).
+```
+
+
+### Finalisation du reverse
+Maintenant qu'on a toutes les bases pour reverse ce petit programme, on va vraiment se coller aux instructions assembleur pour comprendre ce qu'il se passe.
+
+On avait donc ces instructions pour la fonction `main` :  
+
+![[Pasted image 20250512232532.png]]
+
+On a vu le prologue et l'épilogue, mais qu'est ce qui se passe entre ces deux choses, dans la **stack frame** de `main` ?   
+
+```asm
+mov     [ebp+var_8], 2
+mov     [ebp+var_4], 3
+mov     edx, [ebp+var_8]
+mov     eax, [ebp+var_4]
+add     eax, edx
+```
+
+Les deux premières instructions, on l'avait vu, initialisent `a` et `b` avec leurs valeurs respectives. On a donc ces deux valeurs dans la **stack frame** :  
+
+![[Pasted image 20250512232747.png]]
+
+Ensuite,  
+
+```asm
+mov     edx, [ebp+var_8]
+mov     eax, [ebp+var_4]
+```
+
+Dans `edx`, est mise la valeur **2**, et dans `eax` la valeur **3** (récupérées depuis la pile où elles ont été mises par les 2 premières instructions).
+
+Puis finalement, l'**addition** de ces deux **valeurs** est faite, le résultat **étant** contenu dans `eax`  :  
+```asm
+add     eax, edx
+```
+
+Et maintenant, le programme est fini ! 
+
+On peut juste se poser une question, l'addition de `a+b` dans cette ligne a été faite :  
+
+```c
+return a + b;
+```
+
+Mais concernant la valeur de retour ? Et bien on a vu que par convention, `eax` contient la valeur de retour d'une opération, et via notre `add`, le résultat de l'opération a bien été mis dans `eax`, donc pas besoin de s'en soucier !  
+
+## Conclusion
+Pour résumer les choses principales qu'on a apprise dans ce reverse de mini-programme.
+
+- Les **variables locales** peuvent être accédées via un **offset négatif** par rapport à `ebp`
+- Les **arguments** peuvent être accédés via un **offset positif** par rapport à `ebp`
+- Il existe deux manières, ou **syntaxes**, d’afficher de l’assembleur x86 : **Intel** et **AT&T**
+    - Dans la syntaxe **Intel**, la source est l’opérande de droite et la destination est l’opérande de gauche
+    - Dans la syntaxe **AT&T**, c’est l’inverse
+- L’instruction `mov` permet de copier des données d’une source vers une destination et dispose de 4 principales formes. Ces formes peuvent avoir quelques variantes.
+- L’instruction `lea` permet de réaliser des affectations de valeurs **sans déréférencement** avec la possibilité de faire de **petites opérations** directement sur l’opérande source
+- La valeur de retour d’une fonction est retournée via `eax` (ou `rax`)
+
+
+- La forme `mov reg_d, [reg_p]` est principalement utilisée pour **lire** des données **depuis la mémoire**
+- La forme `mov [reg_p], reg_s` est principalement utilisée pour **écrire** des données **vers la mémoire**
+
+```ad-info
+Si on cherche à déréférencer des variables, c'est parce que quand on a un pointeur vers une **zone mémoire**, on parle de la mémoire de la **RAM**, et pas directement de la mémoire qui est dans le processeur (les **registres**).
+
+On peut donc accéder à la mémoire **RAM** depuis le processeur, en mettant les valeurs en mémoire **RAM** dans les **registres**. 
+
+Ce qui veut dire que la **pile**, le **tas**, eux sont dans la RAM et on accède à leurs valeurs via des **adresses**.
+A contrario, on accède à des valeurs stockées dans un processeur via les **registres**.
+```
+
+
 
 

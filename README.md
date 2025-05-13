@@ -124,6 +124,10 @@ title: Définition : Opérandes
 Ce sont les arguments qu'on donne aux **mnémoniques**. Cela peut être des registres, pointeurs ou valeurs concrètes utilisées par l’instruction.
 ```
 
+
+### Debugger
+On peut utiliser en ligne [asmdebugger.com](http://asmdebugger.com/)
+
 ### Registres
 Pour du **x86**, les principaux **registres** :  
 
@@ -139,4 +143,4 @@ Pour du **x86**, les principaux **registres** :
 | `esp`           | *32*           | **Toujours** utilisé comme **pointeur** vers le **haut** de la **pile**          |
 | `eip`           | *32*           | **Toujours** utilisé comme **pointeur** vers l'**instruction courante** exécutée |
 
-### Instructions
+
